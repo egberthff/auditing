@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auditing System</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 10px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      text-align: center;
+      color: white;
+      margin: 20px 0;
+      font-size: 2rem;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+
+    h2 {
+      color: white;
+      font-size: 1.5rem;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+    }
+
+    h3 {
+      color: #667eea;
+      margin-top: 15px;
+      margin-bottom: 8px;
+      font-size: 1.1rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border: 2px solid #e0e0e0;
+      border-radius: 5px;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+      background-color: #f8f9ff;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 12px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+      margin: 8px 0;
+      transition: transform 0.2s, box-shadow 0.2s;
+      font-weight: bold;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: #ff6b6b;
+      padding: 8px 12px;
+      width: auto;
+      margin: 5px 2px 5px 0;
+      font-size: 0.9rem;
+    }
+
+    .btn-secondary:hover {
+      box-shadow: 0 4px 8px rgba(255, 107, 107, 0.4);
+    }
+
+    .people-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+
+    .person-tag {
+      background: #e8f0ff;
+      border: 2px solid #667eea;
+      color: #667eea;
+      padding: 8px 12px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: bold;
+    }
+
+    .person-tag button {
+      background: #ff6b6b;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+      font-size: 0.8rem;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #333;
+    }
+
+    .split-options {
+      display: flex;
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    .split-options button {
+      flex: 1;
+      padding: 10px;
+      background: #f0f0f0;
+      color: #333;
+      border: 2px solid #ddd;
+    }
+
+    .split-options button.active {
+      background: #667eea;
+      color: white;
+      border-color: #667eea;
+    }
+
+    .contributions-container {
+      background: #f8f9ff;
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+    }
+
+    .contribution-input {
+      display: flex;
+      gap: 10px;
+      margin: 8px 0;
+      align-items: center;
+    }
+
+    .contribution-input label {
+      flex: 1;
+      margin: 0;
+      font-weight: normal;
+    }
+
+    .contribution-input input {
+      flex: 1;
+      margin: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+      background: white;
+    }
+
+    thead {
+      background: #667eea;
+      color: white;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    th {
+      font-weight: bold;
+      text-align: center;
+    }
+
+    td {
+      text-align: center;
+    }
+
+    tbody tr:hover {
+      background-color: #f8f9ff;
+    }
+
+    tbody tr:nth-child(even) {
+      background-color: #fafbff;
+    }
+
+    .delete-btn {
+      background: #ff6b6b;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      width: auto;
+      margin: 0;
+    }
+
+    .delete-btn:hover {
+      background: #ff5252;
+    }
+
+    .summary-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .stat-box {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    .stat-box h4 {
+      margin-bottom: 5px;
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .stat-box .value {
+      font-size: 1.8rem;
+      font-weight: bold;
+    }
+
+    .balance-owed {
+      background: #fff3cd;
+      color: #856404;
+      padding: 12px;
+      border-radius: 5px;
+      margin: 10px 0;
+      border-left: 4px solid #ffc107;
+    }
+
+    .balance-owed strong {
+      color: #ff6b6b;
+    }
+
+    .no-data {
+      text-align: center;
+      color: #999;
+      padding: 20px;
+      font-style: italic;
+    }
+
+    .control-btns {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .control-btns button {
+      width: 100%;
+    }
+
+    .import-input-wrapper {
+      position: relative;
+      margin: 0;
+    }
+
+    .import-input-wrapper input[type="file"] {
+      display: none;
+    }
+
+    .import-label {
+      display: block;
+      background: #667eea;
+      color: white;
+      padding: 12px;
+      border-radius: 5px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: bold;
+      margin: 8px 0;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .import-label:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .summary-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+    }
+
+    .summary-card h4 {
+      margin-bottom: 10px;
+      font-size: 1.1rem;
+      opacity: 0.95;
+      border-bottom: 2px solid rgba(255,255,255,0.3);
+      padding-bottom: 8px;
+    }
+
+    .summary-card-content {
+      font-size: 0.95rem;
+      line-height: 1.8;
+    }
+
+    .summary-card-content strong {
+      color: #fff;
+      display: block;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 1.5rem;
+        margin: 15px 0;
+      }
+
+      h2 {
+        font-size: 1.2rem;
+      }
+
+      .card {
+        padding: 12px;
+        margin-bottom: 15px;
+      }
+
+      th, td {
+        padding: 8px;
+        font-size: 0.9rem;
+      }
+
+      .summary-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .person-tag {
+        padding: 6px 10px;
+        font-size: 0.9rem;
+      }
+
+      .control-btns {
+        grid-template-columns: 1fr;
+      }
+
+      th, td {
+        word-break: break-word;
+      }
+
+      input, select, textarea {
+        font-size: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>💰 Auditing System</h1>
+
+    <div class="card">
+      <h3>👥 Manage People</h3>
+      <input type="text" id="newPerson" placeholder="Enter person's name" maxlength="50">
+      <button onclick="addPerson()">Add Person</button>
+      <div class="people-list" id="peopleList"></div>
+    </div>
+
+    <div class="card">
+      <h3>➕ Add Transaction</h3>
+      <form id="transactionForm">
+        <div class="form-group">
+          <label>Amount</label>
+          <input type="number" id="amount" placeholder="Enter amount" step="0.01" min="0" required>
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <input type="text" id="description" placeholder="What was paid for?" required maxlength="100">
+        </div>
+
+        <div class="form-group">
+          <label>Who paid?</label>
+          <select id="payer" required></select>
+        </div>
+
+        <div class="form-group">
+          <label>How to split?</label>
+          <div class="split-options">
+            <button type="button" id="splitEqualBtn" onclick="setSplitType('equal')">Equally Split</button>
+            <button type="button" id="splitCustomBtn" onclick="setSplitType('custom')">Only One Person</button>
+            <button type="button" id="splitCustomContribBtn" onclick="setSplitType('custom-contrib')">Custom Split</button>
+          </div>
+          <p id="splitTypeError" style="color: #ff6b6b; font-size: 0.9rem; margin-top: 5px; display: none;">Please select a split method first</p>
+        </div>
+
+        <div class="contributions-container" id="contributionsContainer"></div>
+
+        <button type="submit">Add Transaction</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>📊 Summary Dashboard</h3>
+      <div class="summary-stats">
+        <div class="stat-box">
+          <h4>Total Expenses</h4>
+          <div class="value" id="totalExpenses">0</div>
+        </div>
+        <div class="stat-box">
+          <h4>Per Person Share</h4>
+          <div class="value" id="fairShare">0</div>
+        </div>
+      </div>
+
+      <table id="summaryTable">
+        <thead>
+          <tr>
+            <th>Person</th>
+            <th>Total Paid</th>
+            <th>Fair Share</th>
+            <th>Balance</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>📋 Detailed Ledger</h3>
+      <table id="ledgerTable">
+        <thead>
+          <tr>
+            <th>Person</th>
+            <th>Amount Paid Out</th>
+            <th>Amount Should Pay</th>
+            <th>Difference</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>💳 Settlement Required</h3>
+      <table id="balanceTable">
+        <thead>
+          <tr>
+            <th>From (Owes)</th>
+            <th>To (Receives)</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>📈 Total Summary</h3>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <h4>💰 Total Paid by Person</h4>
+          <div class="summary-card-content" id="totalPaidSummary">
+            <p style="text-align: center; opacity: 0.8;">No data yet</p>
+          </div>
+        </div>
+        <div class="summary-card">
+          <h4>🔄 Total Debts Outstanding</h4>
+          <div class="summary-card-content" id="totalDebtSummary">
+            <p style="text-align: center; opacity: 0.8;">No debts</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>📝 Transaction History</h3>
+      <table id="transactionTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Payer</th>
+            <th>Split Details</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>⚙️ Actions</h3>
+      <div class="control-btns">
+        <button onclick="exportData()">📥 Export Data</button>
+        <div class="import-input-wrapper">
+          <input type="file" id="importFile" accept=".json" onchange="importData(event)">
+          <label for="importFile" class="import-label">📤 Import Data</label>
+        </div>
+        <button onclick="clearAllData()" style="background: #ff6b6b;">🗑️ Clear All</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let people = JSON.parse(localStorage.getItem("people")) || [];
+    let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+    let savings = JSON.parse(localStorage.getItem("savings")) || {};
+    let currentSplitType = "";
+
+    // Format number with comma separators (e.g., 250000.00 => 250,000.00)
+    function formatAmount(num) {
+      if (isNaN(num)) return "0.00";
+      return parseFloat(num).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    function saveData() {
+      localStorage.setItem("people", JSON.stringify(people));
+      localStorage.setItem("transactions", JSON.stringify(transactions));
+      localStorage.setItem("savings", JSON.stringify(savings));
+      render();
+    }
+
+    function render() {
+      renderPeople();
+      renderTransactions();
+      renderBalances();
+      renderSummary();
+      renderTotalSummary();
+    }
+
+    function addPerson() {
+      const input = document.getElementById("newPerson");
+      const name = input.value.trim();
+
+      if (!name) {
+        alert("Please enter a name");
+        return;
+      }
+
+      if (people.includes(name)) {
+        alert("Person already exists");
+        return;
+      }
+
+      people.push(name);
+      saveData();
+      input.value = "";
+    }
+
+    function removePerson(name) {
+      if (confirm(`Remove ${name}? This will affect existing transactions.`)) {
+        people = people.filter(p => p !== name);
+        transactions = transactions.filter(t => t.payer !== name);
+        // remove savings entry
+        if (savings[name] !== undefined) delete savings[name];
+        saveData();
+      }
+    }
+
+    function deleteTransaction(index) {
+      if (confirm("Delete this transaction?")) {
+        transactions.splice(index, 1);
+        saveData();
+      }
+    }
+
+    function renderPeople() {
+      const container = document.getElementById("peopleList");
+      const payerSelect = document.getElementById("payer");
+
+      container.innerHTML = "";
+      payerSelect.innerHTML = "";
+
+      // Add placeholder option
+      const placeholderOption = document.createElement("option");
+      placeholderOption.value = "";
+      placeholderOption.textContent = "-- Select Person --";
+      placeholderOption.disabled = true;
+      placeholderOption.selected = true;
+      payerSelect.appendChild(placeholderOption);
+
+      if (people.length === 0) {
+        container.innerHTML = '<div class="no-data">No people added yet</div>';
+        return;
+      }
+
+      people.forEach(p => {
+        const tag = document.createElement("div");
+        tag.className = "person-tag";
+        tag.innerHTML = `
+          ${p}
+          <button onclick="removePerson('${p}')" type="button">×</button>
+        `;
+        container.appendChild(tag);
+
+        const option = document.createElement("option");
+        option.value = p;
+        option.textContent = p;
+        payerSelect.appendChild(option);
+      });
+
+      // Only call setSplitType if a valid split type is already selected
+      if (currentSplitType) {
+        setSplitType(currentSplitType);
+      } else {
+        renderContributions();
+      }
+    }
+
+    function setSplitType(type) {
+      currentSplitType = type;
+      
+      // Update button states
+      document.getElementById("splitEqualBtn").classList.toggle("active", type === "equal");
+      document.getElementById("splitCustomBtn").classList.toggle("active", type === "custom");
+      document.getElementById("splitCustomContribBtn").classList.toggle("active", type === "custom-contrib");
+      document.getElementById("splitTypeError").style.display = "none";
+      
+      // Update payer field requirement based on split type
+      const payerSelect = document.getElementById("payer");
+      // Only the 'Only One Person' split requires selecting a payer.
+      if (type === "custom") { // 'Only One Person' (one payer paid full)
+        payerSelect.setAttribute("required", "required");
+      } else {
+        // 'equal' and 'custom-contrib' (custom contributions) do not require a payer
+        payerSelect.removeAttribute("required");
+      }
+      
+      renderContributions();
+    }
+
+    function renderContributions() {
+      const container = document.getElementById("contributionsContainer");
+      container.innerHTML = "";
+
+      if (!currentSplitType) {
+        container.innerHTML = '<p style="text-align: center; color: #999; font-style: italic;">Select a split method above to continue</p>';
+      } else if (currentSplitType === "equal") {
+        container.innerHTML = '<p style="text-align: center; color: #666;">Amount will be split equally among all people</p>';
+      } else if (currentSplitType === "custom") {
+        container.innerHTML = '<p style="text-align: center; color: #666;">Amount will be split equally among all except the payer who paid it</p>';
+      } else if (currentSplitType === "custom-contrib") {
+        container.innerHTML = "";
+        people.forEach(p => {
+          const div = document.createElement("div");
+          div.className = "contribution-input";
+          div.innerHTML = `
+            <label>${p}:</label>
+            <input type="number" data-person="${p}" placeholder="0.00" step="0.01" min="0">
+          `;
+          container.appendChild(div);
+        });
+      }
+    }
+
+    document.getElementById("transactionForm").addEventListener("submit", e => {
+      e.preventDefault();
+
+      // Validate split type is selected
+      if (!currentSplitType || currentSplitType === "") {
+        document.getElementById("splitTypeError").style.display = "block";
+        return;
+      }
+
+      if (people.length === 0) {
+        alert("Please add at least one person");
+        return;
+      }
+
+      const amount = parseFloat(document.getElementById("amount").value);
+      const description = document.getElementById("description").value;
+      const payerSelect = document.getElementById("payer");
+      const payer = payerSelect.value;
+
+      if (!amount || amount <= 0) {
+        alert("Please enter a valid amount");
+        return;
+      }
+
+      // Only require a payer when the split type is 'Only One Person' (custom)
+      if (currentSplitType === "custom" && !payer) {
+        alert("Please select who paid");
+        return;
+      }
+
+      let contributions = {};
+      people.forEach(p => contributions[p] = 0);
+
+      if (currentSplitType === "equal") {
+        // Equal split: everyone is treated as having paid their fair share.
+        const base = Math.floor((amount / people.length) * 100) / 100; // truncate to cents
+        let remainder = parseFloat((amount - base * people.length).toFixed(2));
+        people.forEach((p) => {
+          contributions[p] = base;
+          if (remainder > 0) {
+            contributions[p] = parseFloat((contributions[p] + 0.01).toFixed(2));
+            remainder = parseFloat((remainder - 0.01).toFixed(2));
+          }
+        });
+      } else if (currentSplitType === "custom") {
+        // 'Only One Person' - single payer paid the full amount; contributions represent actual paid
+        people.forEach(p => contributions[p] = 0);
+        contributions[payer] = parseFloat(amount.toFixed(2));
+      } else if (currentSplitType === "custom-contrib") {
+        let totalContrib = 0;
+        const inputs = document.querySelectorAll("#contributionsContainer input");
+
+        inputs.forEach(input => {
+          const value = parseFloat(input.value) || 0;
+          contributions[input.dataset.person] = parseFloat(value.toFixed(2));
+          totalContrib += parseFloat(value.toFixed(2));
+        });
+
+        if (totalContrib <= 0) {
+          alert("At least one person must contribute a positive amount");
+          return;
+        }
+
+        // Require contributions to sum to the transaction amount (within cent tolerance)
+        if (Math.abs(totalContrib - amount) > 0.01) {
+          alert(`Total of contributions (${formatAmount(totalContrib)}) does not match amount (${formatAmount(amount)}). Please adjust inputs.`);
+          return;
+        }
+      }
+
+      const transaction = {
+        id: Date.now(),
+        date: new Date().toLocaleString(),
+        amount: parseFloat(amount.toFixed(2)),
+        description,
+        payer,
+        contributions
+      };
+
+      // Ensure savings object has entries for all people
+      people.forEach(p => { if (savings[p] === undefined) savings[p] = 0; });
+
+      // For this transaction, compute each person's equal share (what they should pay)
+      const cnt = people.length;
+      const base = cnt > 0 ? Math.floor((transaction.amount / cnt) * 100) / 100 : 0;
+      let remainder = cnt > 0 ? parseFloat((transaction.amount - base * cnt).toFixed(2)) : 0;
+      const owedShare = {};
+      people.forEach(p => {
+        owedShare[p] = base;
+        if (remainder > 0) {
+          owedShare[p] = parseFloat((owedShare[p] + 0.01).toFixed(2));
+          remainder = parseFloat((remainder - 0.01).toFixed(2));
+        }
+      });
+
+      // Update savings: any contribution above the owed share becomes savings for that person
+      people.forEach(p => {
+        const paid = parseFloat(transaction.contributions[p] || 0);
+        const over = parseFloat((paid - owedShare[p]).toFixed(2));
+        if (over > 0) {
+          savings[p] = parseFloat(((savings[p] || 0) + over).toFixed(2));
+        }
+      });
+
+      transactions.push(transaction);
+      saveData();
+      document.getElementById("transactionForm").reset();
+      setSplitType("equal");
+    });
+
+    function renderTransactions() {
+      const tbody = document.querySelector("#transactionTable tbody");
+      tbody.innerHTML = "";
+
+      if (transactions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="no-data">No transactions yet</td></tr>';
+        return;
+      }
+
+      const sortedTransactions = [...transactions].reverse();
+
+      sortedTransactions.forEach((t) => {
+        const splitDetails = people
+          .map(p => `${p}: ${formatAmount(parseFloat(t.contributions[p] || 0))}`)
+          .join(" | ");
+
+        const transactionIndex = transactions.findIndex(tx => tx.id === t.id);
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${t.date}</td>
+          <td>${t.description}</td>
+          <td>${formatAmount(parseFloat(t.amount))}</td>
+          <td>${t.payer ? `<strong>${t.payer}</strong>` : '<em>-</em>'}</td>
+          <td style="text-align: left; font-size: 0.9rem;">${splitDetails}</td>
+          <td><button class="delete-btn" onclick="deleteTransaction(${transactionIndex})">Delete</button></td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function renderBalances() {
+      const tbody = document.querySelector("#balanceTable tbody");
+      tbody.innerHTML = "";
+
+      if (transactions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="no-data">No transactions yet</td></tr>';
+        return;
+      }
+
+      // paid = sum of actual contributions (what each person paid)
+      // shouldPay = sum of equal shares per transaction (what each person should have paid)
+      let paid = {};
+      let shouldPay = {};
+      people.forEach(p => {
+        paid[p] = 0;
+        shouldPay[p] = 0;
+      });
+
+      transactions.forEach(t => {
+        // accumulate actual payments
+        people.forEach(p => {
+          paid[p] = parseFloat((paid[p] + parseFloat(t.contributions[p] || 0)).toFixed(2));
+        });
+
+        // compute equal split per transaction and add to shouldPay
+        const count = people.length;
+        if (count > 0) {
+          const base = Math.floor((t.amount / count) * 100) / 100;
+          let remainder = parseFloat((t.amount - base * count).toFixed(2));
+          people.forEach(p => {
+            let share = base;
+            if (remainder > 0) {
+              share = parseFloat((share + 0.01).toFixed(2));
+              remainder = parseFloat((remainder - 0.01).toFixed(2));
+            }
+            shouldPay[p] = parseFloat((shouldPay[p] + share).toFixed(2));
+          });
+        }
+      });
+
+      let net = {};
+      people.forEach(p => {
+        net[p] = parseFloat((paid[p] - shouldPay[p]).toFixed(2));
+      });
+
+      const rawDebts = calculateDebts(net);
+      const debts = applySavingsToDebts(net, rawDebts);
+
+      if (debts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #28a745; font-weight: bold;">All settled! ✓</td></tr>';
+        return;
+      }
+
+      debts.forEach(d => {
+        const row = document.createElement("tr");
+        const roundedAmount = parseFloat(d.amount.toFixed(2));
+        row.innerHTML = `
+          <td><strong>${d.from}</strong></td>
+          <td><strong>${d.to}</strong></td>
+          <td style="color: #ff6b6b; font-weight: bold;">${formatAmount(roundedAmount)}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function calculateDebts(net) {
+      const debts = [];
+      const netCopy = {};
+      
+      // Initialize with proper precision
+      people.forEach(p => {
+        netCopy[p] = parseFloat(net[p].toFixed(2));
+      });
+
+      const creditors = people
+        .filter(p => netCopy[p] > 0.001)
+        .sort((a, b) => netCopy[b] - netCopy[a]);
+      
+      const debtors = people
+        .filter(p => netCopy[p] < -0.001)
+        .sort((a, b) => netCopy[a] - netCopy[b]);
+
+      let creditorIdx = 0;
+      let debtorIdx = 0;
+
+      while (creditorIdx < creditors.length && debtorIdx < debtors.length) {
+        const creditor = creditors[creditorIdx];
+        const debtor = debtors[debtorIdx];
+
+        const creditorAmount = parseFloat(Math.abs(netCopy[creditor]).toFixed(2));
+        const debtorAmount = parseFloat(Math.abs(netCopy[debtor]).toFixed(2));
+        const amount = parseFloat(Math.min(creditorAmount, debtorAmount).toFixed(2));
+
+        debts.push({ 
+          from: debtor, 
+          to: creditor, 
+          amount: amount 
+        });
+
+        netCopy[creditor] = parseFloat((netCopy[creditor] - amount).toFixed(2));
+        netCopy[debtor] = parseFloat((netCopy[debtor] + amount).toFixed(2));
+
+        if (Math.abs(netCopy[creditor]) < 0.001) creditorIdx++;
+        if (Math.abs(netCopy[debtor]) < 0.001) debtorIdx++;
+      }
+
+      return debts;
+    }
+
+    // Apply available savings to reduce outstanding debts.
+    // Savings are applied per-debtor: each debtor's savings are equally split across their debts.
+    function applySavingsToDebts(net, rawDebts) {
+      // clone debts
+      const debts = rawDebts.map(d => ({ ...d }));
+
+      // Work on a copy of savings to avoid mutating until final
+      const localSavings = {};
+      people.forEach(p => localSavings[p] = parseFloat((savings[p] || 0).toFixed(2)));
+
+      // For each debtor (who owes others), apply their savings to their outgoing debts
+      const debtors = [...new Set(debts.map(d => d.from))];
+      debtors.forEach(debtor => {
+        let avail = localSavings[debtor] || 0;
+        if (avail <= 0) return;
+
+        // debts this debtor owes
+        const outs = debts.filter(d => d.from === debtor && d.amount > 0);
+        if (outs.length === 0) return;
+
+        // equally split available savings across their debts
+        const per = parseFloat((avail / outs.length).toFixed(2));
+        outs.forEach(d => {
+          if (avail <= 0) return;
+          const applyAmt = Math.min(per, d.amount, avail);
+          d.amount = parseFloat((d.amount - applyAmt).toFixed(2));
+          avail = parseFloat((avail - applyAmt).toFixed(2));
+        });
+
+        localSavings[debtor] = avail;
+      });
+
+      // remove zero debts
+      const cleaned = debts.filter(d => d.amount > 0.001);
+
+      // Persist any changes back to savings (subtract applied amounts)
+      // Compute total applied per person by comparing original sums
+      people.forEach(p => {
+        const before = parseFloat((savings[p] || 0).toFixed(2));
+        const after = parseFloat((localSavings[p] || 0).toFixed(2));
+        if (after !== before) {
+          savings[p] = after;
+        }
+      });
+
+      // persist updated savings
+      localStorage.setItem("savings", JSON.stringify(savings));
+
+      return cleaned;
+    }
+
+    function renderSummary() {
+      const totalExpenses = transactions.reduce((sum, t) => sum + parseFloat(t.amount), 0);
+      const totalExpensesFixed = parseFloat(totalExpenses.toFixed(2));
+      const fairShare = people.length ? parseFloat((totalExpensesFixed / people.length).toFixed(2)) : 0;
+
+      document.getElementById("totalExpenses").textContent = formatAmount(totalExpensesFixed);
+      document.getElementById("fairShare").textContent = formatAmount(fairShare);
+
+      // derive paid from contributions and shouldPay as equal share per transaction
+      const paid = {};
+      const shouldPay = {};
+      people.forEach(p => {
+        paid[p] = 0;
+        shouldPay[p] = 0;
+      });
+
+      transactions.forEach(t => {
+        people.forEach(p => {
+          paid[p] = parseFloat((paid[p] + parseFloat(t.contributions[p] || 0)).toFixed(2));
+        });
+
+        // equal share per transaction
+        const cnt = people.length;
+        if (cnt > 0) {
+          const base = Math.floor((t.amount / cnt) * 100) / 100;
+          let remainder = parseFloat((t.amount - base * cnt).toFixed(2));
+          people.forEach(p => {
+            let share = base;
+            if (remainder > 0) {
+              share = parseFloat((share + 0.01).toFixed(2));
+              remainder = parseFloat((remainder - 0.01).toFixed(2));
+            }
+            shouldPay[p] = parseFloat((shouldPay[p] + share).toFixed(2));
+          });
+        }
+      });
+
+      const tbody = document.querySelector("#summaryTable tbody");
+      tbody.innerHTML = "";
+
+      if (people.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="no-data">No people added</td></tr>';
+        return;
+      }
+
+      people.forEach(p => {
+        const personPaid = paid[p] || 0;
+        const personShare = shouldPay[p] || 0;
+        const balance = parseFloat((personPaid - personShare).toFixed(2));
+        
+        let balanceClass = "color: #666";
+        let balanceText = formatAmount(balance);
+        let status = "Balanced";
+
+        if (balance > 0.01) {
+          balanceClass = "color: #28a745";
+          balanceText = `+${formatAmount(balance)}`;
+          status = "Overpaid";
+        } else if (balance < -0.01) {
+          balanceClass = "color: #ff6b6b";
+          balanceText = formatAmount(balance);
+          status = "Underpaid";
+        }
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td><strong>${p}</strong></td>
+          <td>${formatAmount(personPaid)}</td>
+          <td>${formatAmount(personShare)}</td>
+          <td style="${balanceClass}; font-weight: bold;">${balanceText}</td>
+          <td>${status}</td>
+        `;
+        tbody.appendChild(row);
+      });
+
+      // Render Ledger
+      renderLedger(paid, shouldPay);
+    }
+
+    function renderLedger(paid, shouldPay) {
+      const tbody = document.querySelector("#ledgerTable tbody");
+      tbody.innerHTML = "";
+
+      if (people.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="no-data">No data</td></tr>';
+        return;
+      }
+
+      people.forEach(p => {
+        const paidAmount = paid[p] || 0;
+        const shouldPayAmount = shouldPay[p] || 0;
+        const difference = parseFloat((paidAmount - shouldPayAmount).toFixed(2));
+
+        const row = document.createElement("tr");
+        let diffClass = "color: #666";
+        if (difference > 0.01) {
+          diffClass = "color: #28a745";
+        } else if (difference < -0.01) {
+          diffClass = "color: #ff6b6b";
+        }
+
+        row.innerHTML = `
+          <td><strong>${p}</strong></td>
+          <td>${formatAmount(paidAmount)}</td>
+          <td>${formatAmount(shouldPayAmount)}</td>
+          <td style="${diffClass}; font-weight: bold;">${formatAmount(difference)}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    // Audit Reconciliation Control - Verify all amounts add up correctly
+    function auditReconciliation() {
+      const audit = {
+        isValid: true,
+        totalExpenses: 0,
+        totalPaid: 0,
+        totalContributions: 0,
+        discrepancies: []
+      };
+
+      // Calculate total expenses
+      audit.totalExpenses = parseFloat(transactions.reduce((sum, t) => sum + parseFloat(t.amount), 0).toFixed(2));
+
+      // Calculate total contributions by all people (what people actually paid)
+      let totalContribByPerson = {};
+      transactions.forEach(t => {
+        people.forEach(p => {
+          totalContribByPerson[p] = (totalContribByPerson[p] || 0) + parseFloat(t.contributions[p] || 0);
+        });
+      });
+      audit.totalContributions = parseFloat(Object.values(totalContribByPerson).reduce((sum, v) => sum + v, 0).toFixed(2));
+      // For auditing purposes, totalPaid is the same as totalContributions
+      audit.totalPaid = audit.totalContributions;
+
+      // If total contributions differ from total expenses, treat the difference as advances/deficits
+      const diff = parseFloat((audit.totalContributions - audit.totalExpenses).toFixed(2));
+      if (Math.abs(diff) > 0.001) {
+        // Still valid accounting, but surface as an audit note (advances or deficits)
+        if (diff > 0) {
+          audit.discrepancies.push(`Advances present: ${formatAmount(diff)}`);
+        } else {
+          audit.discrepancies.push(`Deficit present: ${formatAmount(-diff)}`);
+        }
+      }
+
+      return audit;
+    }
+
+    function renderTotalSummary() {
+      // Run audit reconciliation first
+      const audit = auditReconciliation();
+      
+      const totalExpenses = parseFloat(transactions.reduce((sum, t) => sum + parseFloat(t.amount), 0).toFixed(2));
+      
+      // Calculate total paid by each person (sum of contributions)
+      const totalPaidByPerson = {};
+      people.forEach(p => totalPaidByPerson[p] = 0);
+      transactions.forEach(t => {
+        people.forEach(p => {
+          totalPaidByPerson[p] = parseFloat((totalPaidByPerson[p] + parseFloat(t.contributions[p] || 0)).toFixed(2));
+        });
+      });
+
+      // Calculate total debts: derive paid from contributions and shouldPay as equal share per transaction
+      let paid = {};
+      let shouldPay = {};
+      people.forEach(p => {
+        paid[p] = 0;
+        shouldPay[p] = 0;
+      });
+
+      transactions.forEach(t => {
+        people.forEach(p => {
+          paid[p] = parseFloat((paid[p] + parseFloat(t.contributions[p] || 0)).toFixed(2));
+        });
+
+        // compute equal share per transaction and add to shouldPay
+        const cnt = people.length;
+        if (cnt > 0) {
+          const base = Math.floor((t.amount / cnt) * 100) / 100;
+          let remainder = parseFloat((t.amount - base * cnt).toFixed(2));
+          people.forEach(p => {
+            let share = base;
+            if (remainder > 0) {
+              share = parseFloat((share + 0.01).toFixed(2));
+              remainder = parseFloat((remainder - 0.01).toFixed(2));
+            }
+            shouldPay[p] = parseFloat((shouldPay[p] + share).toFixed(2));
+          });
+        }
+      });
+
+      let net = {};
+      people.forEach(p => {
+        net[p] = parseFloat((paid[p] - shouldPay[p]).toFixed(2));
+      });
+
+      const rawDebts = calculateDebts(net);
+      const debts = applySavingsToDebts(net, rawDebts);
+      const totalDebts = parseFloat(debts.reduce((sum, d) => sum + parseFloat(d.amount), 0).toFixed(2));
+
+      // Render total paid
+      let paidHTML = "";
+      if (Object.values(totalPaidByPerson).every(v => v === 0)) {
+        paidHTML = '<p style="text-align: center; opacity: 0.8;">No transactions yet</p>';
+      } else {
+        paidHTML = people
+          .filter(p => totalPaidByPerson[p] > 0)
+          .sort((a, b) => totalPaidByPerson[b] - totalPaidByPerson[a])
+          .map(p => {
+            const save = savings[p] ? ` <span style="opacity:.8">(Savings: ${formatAmount(savings[p])})</span>` : "";
+            return `<div><span>${p}:</span> <strong>${formatAmount(totalPaidByPerson[p])}</strong>${save}</div>`;
+          })
+          .join("");
+        const totalSavings = parseFloat(Object.values(savings || {}).reduce((s, v) => s + v, 0).toFixed(2));
+        paidHTML += `<div style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 8px;"><span>Total:</span> <strong>${formatAmount(totalExpenses)}</strong></div>`;
+        if (totalSavings > 0) {
+          paidHTML += `<div style="margin-top: 6px; font-size:0.9rem; opacity:0.9;"><span>Total Savings:</span> <strong>${formatAmount(totalSavings)}</strong></div>`;
+        }
+      }
+
+      document.getElementById("totalPaidSummary").innerHTML = paidHTML;
+
+      // Render total debts
+      let debtHTML = "";
+      if (debts.length === 0) {
+        debtHTML = '<p style="text-align: center; opacity: 0.8; color: #90EE90;">✓ All settled!</p>';
+      } else {
+        debtHTML = debts
+          .map(d => `<div><span>${d.from} → ${d.to}:</span> <strong>${formatAmount(parseFloat(d.amount.toFixed(2)))}</strong></div>`)
+          .join("");
+        debtHTML += `<div style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 8px;"><span>Total Debt:</span> <strong>${formatAmount(totalDebts)}</strong></div>`;
+      }
+
+      // Add audit status
+      if (audit.isValid) {
+        debtHTML += `<div style="margin-top: 10px; padding-top: 8px; text-align: center; color: #90EE90; font-weight: bold;">✓ Audit: VALID & RECONCILED</div>`;
+      } else {
+        debtHTML += `<div style="margin-top: 10px; padding-top: 8px; text-align: center; color: #ff9999; font-weight: bold;">⚠ Audit Issues: ${audit.discrepancies.join(", ")}</div>`;
+      }
+
+      document.getElementById("totalDebtSummary").innerHTML = debtHTML;
+    }
+
+    function clearAllData() {
+      if (confirm("Are you sure you want to delete ALL data? This cannot be undone!")) {
+        if (confirm("Really sure? This will delete all people and transactions.")) {
+          people = [];
+          transactions = [];
+          saveData();
+        }
+      }
+    }
+
+    function exportData() {
+      const data = {
+        people,
+        transactions,
+        savings,
+        exportedAt: new Date().toLocaleString()
+      };
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `auditing-export-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          
+          if (!data.people || !Array.isArray(data.people) || !data.transactions || !Array.isArray(data.transactions)) {
+            alert("Invalid file format. Please import a valid auditing export file.");
+            return;
+          }
+
+          if (confirm("This will replace all existing data. Continue?")) {
+            people = data.people;
+            transactions = data.transactions;
+            savings = data.savings || {};
+            saveData();
+            alert("Data imported successfully!");
+            document.getElementById("importFile").value = "";
+          }
+        } catch (error) {
+          alert("Error reading file: " + error.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
