@@ -30,7 +30,8 @@ th,td{padding:10px;border-bottom:1px solid #eef2f7;text-align:left;white-space:n
 .log-entry{padding:8px;border-bottom:1px dashed #eee}
 .good{color:#0b7a3a}
 .bad{color:#b22222}
-
+.mb-5{margin-bottom: 5px;}
+.mt-5{margin-top: 5px;}
 /* Card and layout styles */
 .card{background:#ffffff22;backdrop-filter:blur(6px);border-radius:10px;padding:14px;margin:12px 0;color:#111;border:1px solid rgba(255,255,255,0.06)}
 .card h3{margin-bottom:10px}
