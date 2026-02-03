@@ -1,0 +1,109 @@
+/* Enhanced responsive stylesheet for Auditing UI */
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:16px;color:#222}
+.container{max-width:1200px;margin:0 auto;padding-bottom:40px}
+header h1{color:#fff;text-align:center;margin:12px 0;font-size:28px;text-shadow:2px 2px 6px rgba(0,0,0,0.25)}
+section{background:#fff;border-radius:10px;padding:14px;margin:12px 0;box-shadow:0 6px 18px rgba(0,0,0,0.08)}
+h2{margin-bottom:8px;color:#333}
+.row{display:flex;gap:8px;align-items:center}
+input,select,textarea,button{font-size:15px}
+input,select,textarea{padding:10px;border:1px solid #e3e7ee;border-radius:6px;width:100%;background:#fbfdff}
+button{padding:10px 12px;border-radius:6px;border:0;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;cursor:pointer}
+.btn-secondary{background:#ff6b6b}
+.people-list{display:flex;flex-wrap:wrap;gap:8px}
+.person-tag{background:#e8f0ff;border:2px solid #667eea;color:#333;padding:8px 12px;border-radius:20px;display:flex;align-items:center;gap:8px}
+.person-tag button{background:#ff6b6b;border-radius:50%;width:26px;height:26px;border:0;color:#fff;cursor:pointer}
+.form-group{margin-bottom:12px}
+.split-options{display:flex;gap:8px}
+.split-options button{flex:1;padding:8px;border-radius:6px;border:1px solid #e6e9ef;background:#f7f8fb}
+.split-options button.active{background:#667eea;color:#fff;border-color:#667eea}
+.contributions-container{background:#f8f9ff;padding:8px;border-radius:6px}
+.contribution-input{display:flex;gap:8px;align-items:center;margin:8px 0}
+table{width:100%;border-collapse:collapse;margin-top:10px;overflow-x:auto;display:block}
+thead{background:#667eea;color:#fff}
+th,td{padding:10px;border-bottom:1px solid #eef2f7;text-align:left;white-space:nowrap}
+.delete-btn{background:#ff6b6b;color:#fff;border:0;padding:6px 10px;border-radius:6px;cursor:pointer}
+.summary-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:8px}
+.stat-box{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:10px;border-radius:8px;text-align:center}
+.no-data{color:#9aa3b2;text-align:center;padding:16px;font-style:italic}
+.small{font-size:0.9em;color:#555}
+.log-entry{padding:8px;border-bottom:1px dashed #eee}
+.good{color:#0b7a3a}
+.bad{color:#b22222}
+
+/* Card and layout styles */
+.card{background:#ffffff22;backdrop-filter:blur(6px);border-radius:10px;padding:14px;margin:12px 0;color:#111;border:1px solid rgba(255,255,255,0.06)}
+.card h3{margin-bottom:10px}
+.value{font-size:20px;font-weight:700}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.summary-card{background:linear-gradient(135deg,#ffffff10,#ffffff06);padding:10px;border-radius:8px;color:#fff}
+.summary-card-content{min-height:48px}
+.control-btns{display:flex;gap:8px;align-items:center}
+.import-input-wrapper{position:relative}
+.import-input-wrapper input[type=file]{position:absolute;left:0;top:0;opacity:0;width:36px;height:36px;cursor:pointer}
+.import-label{display:inline-block;padding:8px 10px;background:#f1f3f7;border-radius:6px;margin-left:4px;cursor:pointer}
+
+/* Responsive Design */
+@media(max-width:1200px){
+  .container{max-width:100%;padding:0 16px}
+  header h1{font-size:24px}
+}
+
+@media(max-width:900px){
+  .summary-grid{grid-template-columns:1fr}
+  .control-btns{flex-direction:column;align-items:stretch}
+  .summary-stats{grid-template-columns:1fr}
+  .stat-box{font-size:14px}
+  .value{font-size:18px}
+}
+
+@media(max-width:768px){
+  body{padding:8px}
+  .container{padding:0 8px}
+  header h1{font-size:20px;margin:8px 0}
+  .card{padding:10px;margin:8px 0}
+  .row{flex-direction:column;gap:6px}
+  .person-tag{padding:6px 10px;font-size:0.95rem}
+  .split-options{flex-direction:column}
+  .split-options button{width:100%;margin-bottom:4px}
+  .contribution-input{flex-direction:column;gap:4px}
+  .contribution-input input{width:100%}
+  input,select,textarea,button{font-size:14px;padding:8px}
+  button{padding:8px 10px}
+  th,td{padding:6px;font-size:14px}
+  .delete-btn{padding:4px 8px;font-size:12px}
+  .summary-card-content{min-height:36px;font-size:14px}
+  .control-btns{gap:6px}
+  .import-label{padding:6px 8px;font-size:14px}
+}
+
+@media(max-width:480px){
+  header h1{font-size:18px}
+  .card h3{font-size:16px;margin-bottom:8px}
+  .card{padding:8px;margin:6px 0}
+  input,select,textarea,button{font-size:13px;padding:6px}
+  button{padding:6px 8px}
+  th,td{padding:4px;font-size:12px}
+  .delete-btn{padding:3px 6px;font-size:11px}
+  .person-tag{font-size:0.9rem;padding:4px 8px}
+  .stat-box{padding:8px;font-size:13px}
+  .value{font-size:16px}
+  .summary-card-content{font-size:13px}
+  .control-btns{gap:4px}
+  .import-label{padding:4px 6px;font-size:13px}
+}
+
+@media(max-width:320px){
+  body{padding:4px}
+  .container{padding:0 4px}
+  header h1{font-size:16px;margin:4px 0}
+  .card{padding:6px;margin:4px 0}
+  input,select,textarea,button{font-size:12px;padding:4px}
+  button{padding:4px 6px}
+  th,td{padding:2px;font-size:11px}
+  .delete-btn{padding:2px 4px;font-size:10px}
+  .person-tag{font-size:0.85rem;padding:3px 6px}
+  .stat-box{padding:6px;font-size:12px}
+  .value{font-size:14px}
+  .summary-card-content{font-size:12px}
+}
