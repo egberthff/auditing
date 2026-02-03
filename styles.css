@@ -23,6 +23,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px;overflow-x:auto;displa
 thead{background:#667eea;color:#fff}
 th,td{padding:10px;border-bottom:1px solid #eef2f7;text-align:left;white-space:nowrap}
 .delete-btn{background:#ff6b6b;color:#fff;border:0;padding:6px 10px;border-radius:6px;cursor:pointer}
+.paid-btn{background:#28a745;color:#fff;border:0;padding:6px 10px;border-radius:6px;cursor:pointer}
 .summary-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:8px}
 .stat-box{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:10px;border-radius:8px;text-align:center}
 .no-data{color:#9aa3b2;text-align:center;padding:16px;font-style:italic}

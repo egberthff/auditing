@@ -190,7 +190,7 @@ function renderDirectDebts() {
 
 function renderBalances() {
   const tbody = document.querySelector("#balanceTable tbody"); tbody.innerHTML = "";
-  if (transactions.length === 0 && directDebts.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="no-data">No transactions or debts yet</td></tr>'; return; }
+  if (transactions.length === 0 && directDebts.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="no-data">No transactions or debts yet</td></tr>'; return; }
   let paid = {}; let shouldPay = {}; people.forEach(p => { paid[p] = 0; shouldPay[p] = 0; });
   transactions.forEach(t => {
     people.forEach(p => { paid[p] += t.contributions[p] || 0; });
@@ -212,8 +212,8 @@ function renderBalances() {
     net[d.to] = (net[d.to] || 0) + d.amount; // Creditor owes less
   });
   const rawDebts = calculateDebts(net); const debts = applySavingsToDebts(net, rawDebts);
-  if (debts.length === 0) { tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #28a745; font-weight: bold;">All settled! ✓</td></tr>'; return; }
-  debts.forEach(d => { const row = document.createElement("tr"); row.innerHTML = `\n          <td><strong>${d.from}</strong></td>\n          <td><strong>${d.to}</strong></td>\n          <td style="color: #ff6b6b; font-weight: bold;">${formatAmount(d.amount)}</td>\n        `; tbody.appendChild(row); });
+  if (debts.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #28a745; font-weight: bold;">All settled! ✓</td></tr>'; return; }
+  debts.forEach(d => { const row = document.createElement("tr"); row.innerHTML = `\n          <td><strong>${d.from}</strong></td>\n          <td><strong>${d.to}</strong></td>\n          <td style="color: #ff6b6b; font-weight: bold;">${formatAmount(d.amount)}</td>\n          <td><button class="paid-btn" onclick="markDebtPaid('${d.from}', '${d.to}', ${d.amount})">Mark Paid</button></td>\n        `; tbody.appendChild(row); });
 }
 
 function calculateDebts(net) {
@@ -379,6 +379,38 @@ function deleteDirectDebt(index) {
   if (confirm("Delete this direct debt?")) {
     directDebts.splice(index, 1);
     saveData();
+  }
+}
+
+function markDebtPaid(from, to, maxAmount) {
+  const paymentAmount = prompt(`Enter payment amount from ${from} to ${to} (max: ${formatAmount(maxAmount)}):`, formatAmount(maxAmount));
+  if (paymentAmount === null) return; // User cancelled
+  
+  const amountDollars = parseFloat(paymentAmount);
+  if (isNaN(amountDollars) || amountDollars <= 0) {
+    alert("Please enter a valid positive amount.");
+    return;
+  }
+  
+  const amountCents = toCents(amountDollars);
+  if (amountCents > maxAmount) {
+    alert(`Payment amount cannot exceed ${formatAmount(maxAmount)}.`);
+    return;
+  }
+  
+  if (confirm(`Mark payment of ${formatAmount(amountCents)} from ${from} to ${to} as completed?`)) {
+    // Add a direct debt in the opposite direction to offset the settlement
+    const debt = {
+      id: Date.now(),
+      from: to, // Creditor becomes debtor
+      to: from, // Debtor becomes creditor
+      amount: amountCents,
+      description: `Payment received from ${from}`,
+      date: new Date().toLocaleString()
+    };
+    directDebts.push(debt);
+    saveData();
+    alert(`Payment of ${formatAmount(amountCents)} marked as completed. ${to} now owes ${from} ${formatAmount(amountCents)}.`);
   }
 }
 
