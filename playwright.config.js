@@ -14,7 +14,7 @@ export default defineConfig({
   },
   webServer: {
     command: "npm run build && npm run preview",
-    url: "http://localhost:4173",
+    url: "https://expense-auditor.netlify.app/",
     reuseExistingServer: !process.env.CI,
     timeout: 180000,
     // No Supabase settings: the e2e suite checks the offline/local behaviour
