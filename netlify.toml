@@ -4,5 +4,8 @@
 
 [build.environment]
   NODE_VERSION = "22"
+  # These two are public by design: Vite builds them into the browser code, and the anon key only
+  # grants what the database's Row Level Security allows. Never add the service_role key anywhere.
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY"
 # Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify → Site settings → Environment variables.
 # Security headers are in public/_headers.
