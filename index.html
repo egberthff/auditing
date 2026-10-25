@@ -3,199 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Auditing System</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta name="theme-color" content="#667eea">
+  <meta name="description" content="Track shared travel expenses offline; everyone pays an equal share. Syncs when you're back online.">
+  <title>Travel Audit</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icon-192.png">
 </head>
 <body>
   <div class="container">
-    <h1>💰 Auditing System</h1>
-
-    <div class="card">
-      <h3>👥 Manage People</h3>
-      <input type="text" id="newPerson" placeholder="Enter person's name" maxlength="50">
-      <button class="mb-5 mt-5" onclick="addPerson()">Add Person</button>
-      <div class="people-list" id="peopleList"></div>
-    </div>
-
-    <div class="card">
-      <h3>➕ Add Transaction</h3>
-      <form id="transactionForm">
-        <div class="form-group">
-          <label>Amount</label>
-          <input type="number" id="amount" placeholder="Enter amount" step="0.01" min="0" required>
-        </div>
-
-        <div class="form-group">
-          <label>Description</label>
-          <input type="text" id="description" placeholder="What was paid for?" required maxlength="100">
-        </div>
-
-        <div class="form-group">
-          <label>Who paid?</label>
-          <select id="payer" required></select>
-        </div>
-
-        <div class="form-group">
-          <label>How to split?</label>
-          <div class="split-options">
-            <button type="button" id="splitEqualBtn" onclick="setSplitType('equal')">Equally Split</button>
-            <button type="button" id="splitCustomBtn" onclick="setSplitType('custom')">Only One Person</button>
-            <button type="button" id="splitCustomContribBtn" onclick="setSplitType('custom-contrib')">Custom Split</button>
-          </div>
-          <p id="splitTypeError" style="color: #ff6b6b; font-size: 0.9rem; margin-top: 5px; display: none;">Please select a split method first</p>
-        </div>
-
-        <div class="contributions-container" id="contributionsContainer"></div>
-
-        <button class="mb-5 mt-5" type="submit">Add Transaction</button>
-      </form>
-    </div>
-
-    <div class="card">
-      <h3>📊 Summary Dashboard</h3>
-      <div class="summary-stats">
-        <div class="stat-box">
-          <h4>Total Expenses</h4>
-          <div class="value" id="totalExpenses">0</div>
-        </div>
-        <div class="stat-box">
-          <h4>Per Person Share</h4>
-          <div class="value" id="fairShare">0</div>
-        </div>
+    <header class="app-header">
+      <h1><a href="#/">💰 Travel Audit</a></h1>
+      <div class="header-right">
+        <button type="button" id="syncPill" class="pill" title="Sync status">…</button>
+        <div id="account" class="account"></div>
       </div>
-
-      <table id="summaryTable">
-        <thead>
-          <tr>
-            <th>Person</th>
-            <th>Total Paid</th>
-            <th>Fair Share</th>
-            <th>Balance</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-
-    <div class="card">
-      <h3>📋 Detailed Ledger</h3>
-      <table id="ledgerTable">
-        <thead>
-          <tr>
-            <th>Person</th>
-            <th>Amount Paid Out</th>
-            <th>Amount Should Pay</th>
-            <th>Difference</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-
-        <div class="card">
-          <h3>💳 Settlement Required</h3>
-          <table id="balanceTable">
-            <thead>
-              <tr>
-                <th>From (Owes)</th>
-                <th>To (Receives)</th>
-                <th>Amount</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
-
-    <div class="card">
-      <h3>📈 Total Summary</h3>
-      <div class="summary-grid">
-        <div class="summary-card">
-          <h4>💰 Total Paid by Person</h4>
-          <div class="summary-card-content" id="totalPaidSummary">
-            <p style="text-align: center; opacity: 0.8;">No data yet</p>
-          </div>
-        </div>
-        <div class="summary-card">
-          <h4>🔄 Total Debts Outstanding</h4>
-          <div class="summary-card-content" id="totalDebtSummary">
-            <p style="text-align: center; opacity: 0.8;">No debts</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3>📝 Transaction History</h3>
-      <table id="transactionTable">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Description</th>
-            <th>Amount</th>
-            <th>Payer</th>
-            <th>Split Details</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-
-    <div class="card">
-      <h3>💰 Direct Debts</h3>
-      <form id="directDebtForm">
-        <div class="form-group">
-          <label>From (Debtor)</label>
-          <select id="directDebtFrom" required>
-            <option value="" disabled selected>-- Select Debtor --</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>To (Creditor)</label>
-          <select id="directDebtTo" required>
-            <option value="" disabled selected>-- Select Creditor --</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Amount</label>
-          <input type="number" id="directDebtAmount" placeholder="0.00" step="0.01" min="0" required>
-        </div>
-        <div class="form-group">
-          <label>Description</label>
-          <input type="text" id="directDebtDescription" placeholder="What is owed for?" maxlength="100">
-        </div>
-        <button type="submit">Add Direct Debt</button>
-      </form>
-      <table id="directDebtTable">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>From</th>
-            <th>To</th>
-            <th>Amount</th>
-            <th>Description</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-
-    <div class="card">
-      <h3>⚙️ Actions</h3>
-      <div class="control-btns">
-        <button onclick="exportData()">📥 Export Data</button>
-        <div class="import-input-wrapper">
-          <input type="file" id="importFile" accept=".json" onchange="importData(event)">
-          <label for="importFile" class="import-label">📤 Import Data</label>
-        </div>
-        <button onclick="clearAllData()" style="background: #ff6b6b;">🗑️ Clear All</button>
-      </div>
-    </div>
+    </header>
+    <div id="updateBanner" class="banner info" hidden></div>
+    <div id="appBanner" class="banner" role="alert" hidden></div>
+    <section id="signIn" hidden></section>
+    <main id="app" aria-live="polite">
+      <p class="no-data">Loading…</p>
+    </main>
   </div>
-
-  <script src="script.js"></script>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>

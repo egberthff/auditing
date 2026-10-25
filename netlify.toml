@@ -1,0 +1,8 @@
+[build]
+  command = "npm ci && npm test && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+# Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Netlify → Site settings → Environment variables.
+# Security headers are in public/_headers.
