@@ -35,7 +35,7 @@ export function createAuth(supabase) {
     async sendCode(rawEmail) {
       const email = String(rawEmail ?? "").trim().toLowerCase();
       if (!/^[^@\s]+@[^@\s]+$/.test(email)) throw new Error("Please enter a valid email address.");
-      const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo(), shouldCreateUser: true } });
+      const { error } = await supabase.auth.signInWithOtp({ email, shouldCreateUser: true } });
       if (error) throw new Error(friendlyAuthError(error));
       return email;
     },
