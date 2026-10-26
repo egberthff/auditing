@@ -42,9 +42,10 @@ Without Supabase settings the app runs in **local-only** mode: fully usable, dat
 ## Connecting Supabase
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. **Database:** open the SQL editor and run [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql)
-   (or `supabase db push` with the Supabase CLI). It creates the tables, accounting checks, Row Level
-   Security policies and realtime publication.
+2. **Database:** open the SQL editor and run every file in [`supabase/migrations/`](supabase/migrations) in order
+   (`0001_init.sql`, then `0002_multi_device.sql`), or use `supabase db push` with the Supabase CLI. They create
+   the tables, accounting checks, Row Level Security policies, realtime publication, membership history and the
+   verification function. Already ran 0001? Just run 0002. Run new migrations **before** deploying a new app version.
 3. **Auth → Providers → Email:** keep Email enabled. In **Auth → Email templates → Magic link**, include
    the code so it can be typed into the installed app, e.g. `Your code: {{ .Token }}` (the link also works).
 4. **Auth → URL configuration:** set the Site URL to your deployed URL and add it plus
@@ -81,8 +82,14 @@ tests/, e2e/               unit, database and end-to-end tests
   using the server's `updated_at` as a cursor. Network errors retry with backoff (2 s up to 5 min).
 - If the server refuses a change (it breaks an accounting rule), syncing pauses and the status pill says
   which record; deleting or fixing it lets sync continue. Nothing is dropped silently.
+- **Every device is verified.** After each sync the app compares a fingerprint of every trip (count and
+  SHA-256 of each table) with the server (`trip_digest`). Missing, stale or stray rows are downloaded again
+  and corrected; the pill then shows "Synced & checked". A new device, or a trip shared later, is downloaded in full.
 - If the owner edits the same record on two devices while both are offline, the edit that reaches the
-  server last wins.
+  server last wins, except that **deletions always win** (the database keeps deleted records deleted).
+- **Membership changes made on another device:** members billed "from the start" are added to expenses
+  recorded elsewhere automatically (every device computes the identical fix). Expenses whose sharing doesn't
+  match who was on the trip at that time are listed under **Splits to review** with **Fix split** / **Keep as is**.
 - Signing out removes account trips from the device (they stay online); unsynced changes trigger a warning.
 - Data from the previous single-page version is moved into a trip called "Imported trip" on first start
   (the old browser data is left untouched as a fallback).

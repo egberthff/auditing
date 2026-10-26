@@ -13,11 +13,10 @@ export default defineConfig({
     headless: true,
   },
   webServer: {
-    command: "npm run build && npm run preview",
-    url: "https://expense-auditor.netlify.app/",
+    // --mode e2e reads .env.e2e, which leaves Supabase unset even if .env has real settings
+    command: "npx vite build --mode e2e && npm run preview",
+    url: "http://localhost:4173", // the local preview server started above (not the deployed site)
     reuseExistingServer: !process.env.CI,
     timeout: 180000,
-    // No Supabase settings: the e2e suite checks the offline/local behaviour
-    env: { VITE_SUPABASE_URL: "", VITE_SUPABASE_ANON_KEY: "" },
   },
 });

@@ -129,6 +129,9 @@ summary { cursor: pointer; font-weight: 600; color: #4b4f9e; padding: 6px 0; }
 .viewer-list { list-style: none; }
 .viewer-list li { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
 .issues { margin: 8px 0 0 18px; }
+.review-list { list-style: none; }
+.review-list li { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.review-actions { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
 .issues li { margin: 4px 0; }
 
 /* ---- tables & stats ---------------------------------------------------------------- */

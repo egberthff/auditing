@@ -6,10 +6,17 @@ export function describeSync(status) {
     case "local-only": return { text: "Saved on this device", kind: "muted", title: "Online sync is not configured for this app." };
     case "signed-out": return { text: status.pending ? `Not syncing · ${waiting(status.pending)}` : "Not syncing · sign in", kind: "muted", title: "Sign in to back up and sync your trips." };
     case "offline": return { text: status.pending ? `Offline · ${waiting(status.pending)}` : "Offline · all saved", kind: "warning", title: "Changes are saved on this device and will sync when you're back online." };
-    case "syncing": return { text: "Syncing…", kind: "info", title: "Sending and receiving changes." };
+    case "syncing": return { text: status.detail ?? "Syncing…", kind: "info", title: "Sending, receiving and checking changes." };
     case "retrying": return { text: status.pending ? `Connection problem · ${waiting(status.pending)}` : "Connection problem", kind: "warning", title: `Will retry automatically. ${status.error?.message ?? ""}` };
     case "error": return { text: "Sync problem · tap for details", kind: "danger", title: status.error?.message ?? "" };
-    case "synced": return { text: status.pending ? waiting(status.pending) : `Synced ${time(status.lastSyncedAt)}`, kind: "success", title: "Everything is backed up." };
+    case "synced": {
+      const checked = status.verifiedAt && status.verifiedAt === status.lastSyncedAt;
+      return {
+        text: status.pending ? waiting(status.pending) : `${checked ? "Synced & checked" : "Synced"} ${time(status.lastSyncedAt)}`,
+        kind: "success",
+        title: checked ? "Everything is backed up, and this device was checked against the server: it holds exactly the same records." : "Everything is backed up.",
+      };
+    }
     default: return { text: status.pending ? waiting(status.pending) : "Ready", kind: "muted", title: "" };
   }
 }

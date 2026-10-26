@@ -1,6 +1,9 @@
 // In-memory stand-in for the parts of supabase-js the sync engine uses. It applies the same
 // ownership/visibility rules as the real RLS policies and stamps updated_at like the server.
 import { TABLES } from "../../src/store/schema.js";
+import { digestRows } from "../../src/sync/digest.js";
+
+const KEEP_DELETED = new Set(["expenses", "transfers", "members"]); // mirrors the keep_deleted() trigger
 
 export function createFakeServer() {
   const tables = Object.fromEntries(TABLES.map(t => [t, new Map()]));
@@ -10,6 +13,8 @@ export function createFakeServer() {
     offline: false,
     reject: null, // (table, row) => error message, to simulate a database check failing
     stamp() { clock += 7; return new Date(clock).toISOString(); },
+    // Let time pass on the server (beyond the pull overlap window)
+    advance(ms) { clock += ms; },
     rows(table) { return [...tables[table].values()]; },
   };
 }
@@ -44,6 +49,7 @@ export function createFakeSupabase(server, user = { id: "owner-1", email: "owner
     const q = {
       select(cols = "*") { columns = cols; return q; },
       gte(col, value) { filters.push(r => Date.parse(r[col]) >= Date.parse(value)); return q; },
+      in(col, values) { const set = new Set(values); filters.push(r => set.has(r[col])); return q; },
       order(col) { orders.push(col); return q; },
       range(from, to) { range = [from, to]; return q; },
       then(resolve, reject) {
@@ -82,10 +88,26 @@ export function createFakeSupabase(server, user = { id: "owner-1", email: "owner
             const problem = server.reject?.(table, row);
             if (problem) return { error: { message: problem, code: "23514" }, status: 400 };
           }
-          for (const row of rows) server.tables[table].set(row.id, { ...structuredClone(row), updated_at: server.stamp() });
+          for (const row of rows) {
+            const existing = server.tables[table].get(row.id);
+            const kept = existing && existing.deleted_at && KEEP_DELETED.has(table) ? existing : row;
+            server.tables[table].set(row.id, { ...structuredClone(kept), updated_at: server.stamp() });
+          }
           return { error: null, status: 201 };
         },
       };
+    },
+    async rpc(name, { trip_ids: tripIds }) {
+      if (server.offline) return networkError;
+      if (name !== "trip_digest") return { data: null, error: { message: "unknown function", code: "PGRST202" }, status: 404 };
+      const data = [];
+      for (const tripId of tripIds) {
+        for (const table of TABLES) {
+          const rows = server.rows(table).filter(r => (table === "trips" ? r.id : r.trip_id) === tripId && canRead(table, r));
+          if (rows.length) data.push({ trip_id: tripId, table_name: table, row_count: rows.length, digest: await digestRows(rows.map(r => ({ id: r.id, updatedAt: r.updated_at }))) });
+        }
+      }
+      return { data, error: null, status: 200 };
     },
     channel() { return { on() { return this; }, subscribe() { return this; } }; },
     removeChannel() {},

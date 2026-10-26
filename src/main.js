@@ -5,6 +5,7 @@ import { supabase } from "./sync/supabase.js";
 import { createSyncEngine } from "./sync/syncEngine.js";
 import { createAuth } from "./auth/auth.js";
 import { UserError } from "./domain/tripActions.js";
+import { fillMissingPeriods, runAutoFixes } from "./domain/reconcile.js";
 import { esc, renderPreservingInput, setBanner, toast } from "./ui/dom.js";
 import * as tripList from "./ui/tripList.js";
 import * as tripView from "./ui/tripView.js";
@@ -25,7 +26,9 @@ async function start() {
   }
 
   const auth = createAuth(supabase);
-  const sync = createSyncEngine({ repo, supabase });
+  // After every verified sync, members billed "from the start" are added to any expense recorded
+  // on another device that didn't know about them yet (same result on every device)
+  const sync = createSyncEngine({ repo, supabase, afterSync: user => runAutoFixes(repo, user) });
   const ctx = {
     repo, auth, sync,
     user: await auth.currentUser().catch(() => null),
@@ -34,6 +37,7 @@ async function start() {
 
   // Data from the previous single-page version becomes a trip on first run
   const legacy = await importLegacyLocalData(repo);
+  await fillMissingPeriods(repo);
   if (legacy?.error) setBanner("appBanner", "⚠ Data from the previous version couldn't be imported automatically. It is still kept in this browser; please contact support or export it from the old version.");
   else if (legacy?.tripId) toast("Your existing data was moved into a trip called “Imported trip”.", "info");
 

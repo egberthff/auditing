@@ -1,6 +1,7 @@
 import { buildLedger } from "../domain/ledgerState.js";
 import { createTrip, restoreTrip, UserError } from "../domain/tripActions.js";
 import { importFile } from "../domain/importExport.js";
+import { splitDrift } from "../domain/reconcile.js";
 import { esc, formatDateTime, toast } from "./dom.js";
 
 const COMMON_CURRENCIES = ["USD", "EUR", "GBP", "PHP", "JPY", "AUD", "CAD", "SGD", "THB", "IDR", "INR", "KRW", "CNY", "HKD", "NZD", "CHF", "MXN", "AED", "MYR", "VND"];
@@ -24,6 +25,7 @@ async function tripCard(ctx, trip) {
     <li class="trip-item">
       <a class="trip-link" href="#/trip/${esc(trip.id)}">
         <strong>${esc(trip.name)}</strong> ${roleBadge(role)} ${audit.isValid ? "" : '<span class="badge danger">Audit issues</span>'}
+        ${splitDrift(data).length ? '<span class="badge warning">Needs review</span>' : ""}
         <span class="trip-meta">${active} member${active === 1 ? "" : "s"} · ${money(ledger.totalExpenses)} spent${owed ? ` · ${money(owed)} to settle` : " · settled"}</span>
       </a>
       <span class="trip-actions">
@@ -54,7 +56,9 @@ export async function render(ctx) {
 
     <div class="card">
       <h3>🧳 Your trips</h3>
-      ${current.length ? `<ul class="trip-list">${await cards(current)}</ul>` : '<p class="no-data">No trips yet. Create one above.</p>'}
+      ${current.length
+        ? `<ul class="trip-list">${await cards(current)}</ul>`
+        : `<p class="no-data">${esc(ctx.sync.status.detail ?? "No trips yet. Create one above.")}</p>`}
       ${archived.length ? `
         <details data-key="archived">
           <summary>Archived trips (${archived.length})</summary>

@@ -3,6 +3,7 @@
 import { equalShares, seedOf } from "../ledger.js";
 import { currencyDigits, formatMoney, isValidCurrency } from "../money.js";
 import { buildLedger } from "./ledgerState.js";
+import { correctedSplit, periodsFor, splitDrift, withParticipants } from "./reconcile.js";
 
 export class UserError extends Error {}
 const fail = message => { throw new UserError(message); };
@@ -62,23 +63,16 @@ export async function addMember(repo, data, rawName, { billFrom = "join" } = {})
   const existing = data.members.find(m => m.name.toLowerCase() === name.toLowerCase());
   if (existing && !existing.leftAt) fail(`${existing.name} is already a member.`);
 
-  // Re-adding someone who left brings them back under the same record and spelling
+  // Re-adding someone who left brings them back under the same record and spelling,
+  // with a new membership period (so the time they were away stays on record)
+  const joinedAt = nowIso();
   const member = existing
-    ? { ...existing, leftAt: null, billFrom }
-    : { id: crypto.randomUUID(), tripId: data.trip.id, name, billFrom, leftAt: null };
+    ? { ...existing, leftAt: null, billFrom, periods: [...periodsFor(existing, data.expenses), { joinedAt, leftAt: null }] }
+    : { id: crypto.randomUUID(), tripId: data.trip.id, name, billFrom, leftAt: null, periods: [{ joinedAt, leftAt: null }] };
   const ops = [{ table: "members", record: member }];
   if (billFrom === "start") {
     for (const e of data.expenses) {
-      if (e.participants.includes(member.id)) continue;
-      const participants = [...e.participants, member.id];
-      ops.push({
-        table: "expenses",
-        record: {
-          ...e, participants,
-          shares: equalShares(e.amountCents, participants, seedOf(e.id)),
-          contributions: { ...e.contributions, [member.id]: e.contributions[member.id] ?? 0 },
-        },
-      });
+      if (!e.participants.includes(member.id)) ops.push({ table: "expenses", record: withParticipants(e, [...e.participants, member.id]) });
     }
   }
   await repo.saveBatch(ops);
@@ -93,7 +87,9 @@ export async function removeMember(repo, data, memberId) {
     return "deleted";
   }
   // Keeps their share of past expenses; they are just not billed for new ones
-  await repo.update("members", memberId, { leftAt: nowIso() });
+  const leftAt = nowIso();
+  const periods = periodsFor(member, data.expenses).map((p, i, all) => (i === all.length - 1 && !p.leftAt ? { ...p, leftAt } : p));
+  await repo.update("members", memberId, { leftAt, periods });
   return "left";
 }
 
@@ -145,6 +141,22 @@ export async function addExpense(repo, data, { description, amountCents, mode, p
 }
 
 export const deleteExpense = (repo, id) => repo.softDelete("expenses", id);
+
+// "Fix split": share the expense among the people who were on the trip at that time.
+export async function fixSplit(repo, data, expenseId) {
+  const entry = splitDrift(data).find(d => d.expense.id === expenseId);
+  if (!entry) fail("This expense no longer needs fixing.");
+  const fixed = correctedSplit(entry);
+  if (!fixed) fail("Nobody would be left sharing this expense; delete it instead, or keep it as is.");
+  return repo.save("expenses", fixed);
+}
+
+// "Keep as is": the bookkeeper confirms the split is intended.
+export async function keepSplit(repo, data, expenseId) {
+  const expense = data.expenses.find(e => e.id === expenseId);
+  if (!expense) fail("That expense no longer exists.");
+  return repo.save("expenses", { ...expense, splitConfirmed: true });
+}
 
 // ---- debts and payments ----------------------------------------------------------
 

@@ -139,6 +139,33 @@ export async function createRepo({ dbName, now = () => new Date().toISOString(),
       return applied;
     },
 
+    // Write records on this device only, without queuing them for sync (local data upgrades
+    // that the server does itself, e.g. in a migration).
+    async putLocal(table, records) {
+      if (!records.length) return;
+      const tx = db.transaction(table, "readwrite");
+      for (const rec of records) tx.store.put(rec);
+      await tx.done;
+      notify("remote");
+    },
+
+    // Delete rows from this device only (they no longer exist on the server). Rows with a
+    // change waiting to be pushed are kept: that change is newer than what the server has.
+    async removeLocal(table, ids) {
+      if (!ids.length) return 0;
+      const tx = db.transaction([table, "outbox"], "readwrite");
+      const keyIndex = tx.objectStore("outbox").index("key");
+      let removed = 0;
+      for (const id of ids) {
+        if (await keyIndex.count(keyOf(table, id))) continue;
+        await tx.objectStore(table).delete(id);
+        removed++;
+      }
+      await tx.done;
+      if (removed) notify("remote");
+      return removed;
+    },
+
     // Remove trips (and everything in them) from this device only, e.g. after access was revoked.
     async purgeTrips(tripIds) {
       if (!tripIds.length) return;

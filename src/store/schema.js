@@ -5,18 +5,34 @@ export const TABLES = ["trips", "trip_viewers", "members", "expenses", "transfer
 export const COLUMNS = {
   trips: ["id", "ownerId", "name", "currency", "archived", "createdAt", "updatedAt", "deletedAt"],
   trip_viewers: ["id", "tripId", "email", "createdAt", "updatedAt", "deletedAt"],
-  members: ["id", "tripId", "name", "billFrom", "leftAt", "createdAt", "updatedAt", "deletedAt"],
+  members: ["id", "tripId", "name", "billFrom", "leftAt", "periods", "createdAt", "updatedAt", "deletedAt"],
   expenses: ["id", "tripId", "description", "amountCents", "paidMode", "payerId", "participants", "shares", "contributions",
-    "occurredAt", "createdAt", "updatedAt", "deletedAt"],
+    "splitConfirmed", "occurredAt", "createdAt", "updatedAt", "deletedAt"],
   transfers: ["id", "tripId", "kind", "fromMember", "toMember", "amountCents", "description", "occurredAt", "createdAt", "updatedAt", "deletedAt"],
 };
 
 const toSnake = key => key.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`);
 
+// When a member was on the trip: [{ joinedAt, leftAt }]. Records made before membership history
+// existed get one period, from when they were added until they left.
+export function periodsOf(member) {
+  return Array.isArray(member.periods) && member.periods.length
+    ? member.periods
+    : [{ joinedAt: member.createdAt ?? null, leftAt: member.leftAt ?? null }];
+}
+
+// Fill columns that the database requires but older local records may not have.
+function withDefaults(table, record) {
+  if (table === "members") return { ...record, periods: periodsOf(record) };
+  if (table === "expenses") return { ...record, splitConfirmed: Boolean(record.splitConfirmed) };
+  return record;
+}
+
 // Server timestamps (updated_at) are set by the database, so they are not sent.
 export function toServerRow(table, record) {
+  const full = withDefaults(table, record);
   const row = {};
-  for (const key of COLUMNS[table]) if (key !== "updatedAt") row[toSnake(key)] = record[key] ?? null;
+  for (const key of COLUMNS[table]) if (key !== "updatedAt") row[toSnake(key)] = full[key] ?? null;
   return row;
 }
 
@@ -31,7 +47,7 @@ export function fromServerRow(table, row) {
     record.contributions = record.contributions || {};
   }
   if (table === "transfers") record.amountCents = Number(record.amountCents);
-  return record;
+  return withDefaults(table, record);
 }
 
 export const tripIdOf = (table, record) => (table === "trips" ? record.id : record.tripId);

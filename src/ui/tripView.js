@@ -1,6 +1,7 @@
 import { buildLedger } from "../domain/ledgerState.js";
 import * as act from "../domain/tripActions.js";
 import { exportTrip } from "../domain/importExport.js";
+import { splitDrift } from "../domain/reconcile.js";
 import { currencyDigits, parseAmount, toInputValue } from "../money.js";
 import { esc, formatDateTime, toast } from "./dom.js";
 import { roleOf } from "./tripList.js";
@@ -234,6 +235,31 @@ function settingsSection(data, canEdit) {
     </div>`;
 }
 
+function reviewSection(drift, view, canEdit) {
+  if (!drift.length) return "";
+  const { money } = view;
+  const names = list => list.map(m => esc(m.name)).join(", ");
+  const items = drift.map(({ expense: e, missing, extra }) => {
+    const notes = [
+      missing.length ? `${names(missing)} ${missing.length === 1 ? "was" : "were"} on the trip then but ${missing.length === 1 ? "isn't" : "aren't"} sharing it.` : "",
+      extra.length ? `${names(extra)} ${extra.length === 1 ? "wasn't" : "weren't"} on the trip then but ${extra.length === 1 ? "is" : "are"} sharing it.` : "",
+    ].filter(Boolean).join(" ");
+    return `<li>
+      <strong>${esc(e.description)}</strong> <span class="muted-text">(${money(e.amountCents)}, ${esc(formatDateTime(e.occurredAt))})</span><br>${notes}
+      ${canEdit ? `<span class="review-actions">
+        <button type="button" class="small-btn" data-action="fixSplit" data-id="${esc(e.id)}">Fix split</button>
+        <button type="button" class="link-btn" data-action="keepSplit" data-id="${esc(e.id)}">Keep as is</button></span>` : ""}
+    </li>`;
+  }).join("");
+  return `
+    <div class="card">
+      <h3>⚖️ Splits to review</h3>
+      <p class="hint">These expenses were probably recorded on another device before it knew about a member joining or leaving.
+        ${canEdit ? "“Fix split” shares the expense among the people who were on the trip at that time; “Keep as is” confirms it's intended." : "The bookkeeper can fix or confirm them."}</p>
+      <ul class="review-list">${items}</ul>
+    </div>`;
+}
+
 function auditSection(view) {
   const { audit } = view;
   return `
@@ -258,9 +284,12 @@ export async function render(ctx, { tripId }) {
   const role = roleOf(data.trip, ctx.user);
   const canEdit = role !== "viewer";
   const view = buildLedger(data);
+  const drift = splitDrift(data);
   return [
     headSection(data, role),
     view.audit.isValid ? "" : `<div class="banner danger">⚠ The audit found ${view.audit.issues.length} problem(s). See “Audit” at the bottom.</div>`,
+    drift.length ? `<div class="banner">⚖️ ${drift.length} expense(s) may be shared by the wrong people. See “Splits to review” below.</div>` : "",
+    reviewSection(drift, view, canEdit),
     summarySection(data, view),
     settlementSection(view, canEdit),
     canEdit ? expenseFormSection(data) : "",
@@ -367,6 +396,19 @@ export const actions = {
     if (!e) return;
     const { money } = buildLedger(data);
     if (confirm(`Delete “${e.description}” (${money(e.amountCents)})?`)) await act.deleteExpense(ctx.repo, e.id);
+  },
+
+  async fixSplit(ctx, el, { tripId }) {
+    const data = await load(ctx, tripId);
+    const e = data.expenses.find(x => x.id === el.dataset.id);
+    if (!e || !confirm(`Share “${e.description}” among the people who were on the trip at that time? Everyone's share of it will be recalculated.`)) return;
+    await act.fixSplit(ctx.repo, data, e.id);
+    toast("Split fixed.", "success");
+  },
+
+  async keepSplit(ctx, el, { tripId }) {
+    await act.keepSplit(ctx.repo, await load(ctx, tripId), el.dataset.id);
+    toast("Kept as is.", "success");
   },
 
   async deleteTransfer(ctx, el, { tripId }) {

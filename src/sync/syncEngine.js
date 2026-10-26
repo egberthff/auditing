@@ -5,12 +5,18 @@
 // pull: fetch rows changed since the last cursor (server updated_at), page by page, and
 //       apply them locally unless the record has a local change still waiting to be pushed.
 //
+// verify: every trip the user can see is checked against a server-side digest; trips that
+//       are missing or differ are downloaded again in full, so all devices end up identical.
+//
 // Each trip has one writer (its owner), so the only conflict is the owner editing the same
-// record on two devices while offline; the change that reaches the server last wins.
+// record on two devices while offline; the change that reaches the server last wins, and the
+// database keeps deleted records deleted.
 import { TABLES, fromServerRow, toServerRow, tripIdOf } from "../store/schema.js";
+import { digestRows } from "./digest.js";
 
 const PAGE_SIZE = 1000;
 const PUSH_CHUNK = 200;
+const TRIP_BATCH = 50; // trips per full download / digest request
 const CURSOR_OVERLAP_MS = 5000; // re-read a little so rows committed late are not skipped
 const MAX_BACKOFF_MS = 5 * 60 * 1000;
 
@@ -26,15 +32,22 @@ export class SyncError extends Error {
 export function classifyError(error, status) {
   if (error instanceof SyncError) return error;
   const code = error?.code ?? "";
+  // Unknown column / function: the app is newer than the database schema
+  if (["PGRST204", "PGRST202", "42703", "42883"].includes(code)) {
+    return new SyncError("The online database needs an update before this version of the app can sync. "
+      + "Run the newest file in supabase/migrations in the Supabase SQL editor.", { retryable: false, code, status });
+  }
   const message = error?.message || String(error);
   const network = error instanceof TypeError || /fetch|network|timed? ?out|load failed|offline/i.test(message) || (!code && !status);
   const retryable = network || status >= 500 || status === 408 || status === 429 || code === "PGRST301" || status === 401;
   return new SyncError(message, { retryable, code, status });
 }
 
-export function createSyncEngine({ repo, supabase, isOnline = () => globalThis.navigator?.onLine ?? true, timers = globalThis }) {
+// afterSync(user): optional hook run after each verified pull (e.g. automatic split fixes);
+// it returns how many changes it queued, and those are pushed in the same run.
+export function createSyncEngine({ repo, supabase, isOnline = () => globalThis.navigator?.onLine ?? true, timers = globalThis, afterSync = null }) {
   const listeners = new Set();
-  let status = { state: supabase ? "idle" : "local-only", pending: 0, lastSyncedAt: null, error: null };
+  let status = { state: supabase ? "idle" : "local-only", pending: 0, lastSyncedAt: null, verifiedAt: null, detail: null, error: null };
   let running = null;
   let again = false;
   let timer = null;
@@ -128,21 +141,114 @@ export function createSyncEngine({ repo, supabase, isOnline = () => globalThis.n
       }
       if (newest && newest !== cursor) await repo.setMeta(cursorKey, newest);
     }
-    await pruneHiddenTrips(user);
   }
 
-  // Trips shared with this user whose access was removed disappear from the device.
-  async function pruneHiddenTrips(user) {
-    const visible = new Set();
+  const chunksOf = (list, size) => Array.from({ length: Math.ceil(list.length / size) }, (_, i) => list.slice(i * size, i * size + size));
+
+  async function fetchAll(table, buildQuery) {
+    const rows = [];
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error, status: httpStatus } = await buildQuery(supabase.from(table).select("*"))
+        .order("id", { ascending: true }).range(from, from + PAGE_SIZE - 1);
+      if (error) throw classifyError(error, httpStatus);
+      rows.push(...data);
+      if (data.length < PAGE_SIZE) return rows;
+    }
+  }
+
+  async function visibleTripIds() {
+    const ids = new Set();
     for (let from = 0; ; from += PAGE_SIZE) {
       const { data, error, status: httpStatus } = await supabase.from("trips").select("id").order("id").range(from, from + PAGE_SIZE - 1);
       if (error) throw classifyError(error, httpStatus);
-      data.forEach(r => visible.add(r.id));
-      if (data.length < PAGE_SIZE) break;
+      data.forEach(r => ids.add(r.id));
+      if (data.length < PAGE_SIZE) return ids;
     }
+  }
+
+  async function localRows(table, tripId) {
+    if (table === "trips") {
+      const trip = await repo.get("trips", tripId);
+      return trip ? [trip] : [];
+    }
+    return repo.listChildren(table, tripId, { includeDeleted: true });
+  }
+
+  async function pendingTripIds() {
+    const ids = new Set();
+    for (const e of await repo.outboxEntries()) {
+      const record = await repo.get(e.table, e.id);
+      if (record) ids.add(tripIdOf(e.table, record));
+    }
+    return ids;
+  }
+
+  // Download whole trips regardless of cursors. With prune, local rows the server doesn't
+  // have (and that aren't waiting to be pushed) are removed, so the device matches exactly.
+  async function downloadTrips(tripIds, { prune = false } = {}) {
+    for (const chunk of chunksOf(tripIds, TRIP_BATCH)) {
+      for (const table of TABLES) {
+        const rows = await fetchAll(table, q => q.in(table === "trips" ? "id" : "trip_id", chunk));
+        await repo.applyRemote(table, rows.map(row => fromServerRow(table, row)));
+        if (!prune) continue;
+        const onServer = new Set(rows.map(r => r.id));
+        const stale = [];
+        for (const tripId of chunk) for (const r of await localRows(table, tripId)) if (!onServer.has(r.id)) stale.push(r.id);
+        await repo.removeLocal(table, stale);
+      }
+    }
+  }
+
+  // Trip ids whose local rows differ from the server's (row count or fingerprint, per table).
+  async function mismatchedTrips(tripIds) {
+    const bad = [];
+    for (const chunk of chunksOf(tripIds, TRIP_BATCH)) {
+      const { data, error, status: httpStatus } = await supabase.rpc("trip_digest", { trip_ids: chunk });
+      if (error) throw classifyError(error, httpStatus);
+      const server = new Map(data.map(d => [`${d.trip_id}:${d.table_name}`, d]));
+      for (const tripId of chunk) {
+        for (const table of TABLES) {
+          const rows = await localRows(table, tripId);
+          const remote = server.get(`${tripId}:${table}`);
+          const same = rows.length === Number(remote?.row_count ?? 0)
+            && (rows.length === 0 || (await digestRows(rows)) === remote.digest);
+          if (!same) { bad.push(tripId); break; }
+        }
+      }
+    }
+    return bad;
+  }
+
+  // Make the trips on this device match what the user can see on the server, and prove that
+  // every one of them holds exactly the server's rows.
+  async function reconcileTrips(user) {
+    const visible = await visibleTripIds();
     const local = await repo.listTrips({ includeDeleted: true });
+    const localIds = new Set(local.map(t => t.id));
+
+    // Shared trips whose access was removed disappear from the device
     const hidden = local.filter(t => t.ownerId && t.ownerId !== user.id && !visible.has(t.id)).map(t => t.id);
     if (hidden.length) await repo.purgeTrips(hidden);
+
+    // A new device, or a trip shared after this device last synced: its older rows predate the cursors
+    const missing = [...visible].filter(id => !localIds.has(id));
+    if (missing.length) {
+      emit({ detail: localIds.size ? "Downloading shared trips…" : "Downloading your trips…" });
+      await downloadTrips(missing);
+    }
+
+    // Trips with unpushed changes are checked on a later run, once those changes are on the server
+    const pending = await pendingTripIds();
+    const toCheck = [...visible].filter(id => !pending.has(id));
+    let bad = await mismatchedTrips(toCheck);
+    if (bad.length) {
+      emit({ detail: "Repairing differences…" });
+      await downloadTrips(bad, { prune: true });
+      bad = await mismatchedTrips(bad);
+    }
+    if (bad.length) {
+      throw new SyncError(`${bad.length} trip(s) still differ from the server after downloading them again; retrying.`, { retryable: true });
+    }
   }
 
   async function runOnce() {
@@ -153,22 +259,30 @@ export function createSyncEngine({ repo, supabase, isOnline = () => globalThis.n
     if (!supabase) return emit({ state: "local-only" });
     if (!user) return emit({ state: "signed-out", error: null });
     if (!isOnline()) return emit({ state: "offline", error: null });
-    emit({ state: "syncing", error: null });
+    const firstSync = !(await repo.getMeta("cursor:trips"));
+    emit({ state: "syncing", error: null, detail: firstSync ? "Downloading your trips…" : null });
     try {
-      await push(user);
-      await pull(user);
+      for (let round = 0; round < 3; round++) {
+        await push(user);
+        await pull(user);
+        await reconcileTrips(user);
+        // Hooks may queue follow-up changes (e.g. split fixes); push those in this same run
+        const queued = afterSync ? await afterSync(user) : 0;
+        if (!queued) break;
+      }
       failures = 0;
       await refreshPending(user);
-      emit({ state: "synced", lastSyncedAt: new Date().toISOString(), error: null });
+      const at = new Date().toISOString();
+      emit({ state: "synced", lastSyncedAt: at, verifiedAt: status.pending ? status.verifiedAt : at, detail: null, error: null });
     } catch (e) {
       const error = classifyError(e);
       await refreshPending(user).catch(() => {});
       if (error.retryable) {
         failures++;
-        emit({ state: "retrying", error });
+        emit({ state: "retrying", error, detail: null });
         schedule(Math.min(2000 * 2 ** (failures - 1), MAX_BACKOFF_MS));
       } else {
-        emit({ state: "error", error });
+        emit({ state: "error", error, detail: null });
       }
     }
   }
@@ -207,7 +321,15 @@ export function createSyncEngine({ repo, supabase, isOnline = () => globalThis.n
         if (source === "local") { if (status.state === "error") emit({ state: "idle", error: null }); schedule(debounceMs); }
         else refreshPending(lastUser).catch(() => {});
       });
+      // New or changed trips from the bookkeeper's other devices show up without waiting for the timer
+      let tripsChannel = null;
+      if (supabase) {
+        tripsChannel = supabase.channel("my-trips")
+          .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, () => schedule(500));
+        tripsChannel.subscribe();
+      }
       cleanups.push(() => {
+        if (tripsChannel) supabase.removeChannel(tripsChannel);
         globalThis.removeEventListener?.("online", onWake);
         globalThis.removeEventListener?.("offline", onWake);
         globalThis.document?.removeEventListener("visibilitychange", onVisible);

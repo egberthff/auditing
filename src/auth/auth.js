@@ -16,7 +16,6 @@ export function friendlyAuthError(error) {
 }
 
 export function createAuth(supabase) {
-  const redirectTo = () => `${location.origin}${location.pathname}`;
   return {
     available: Boolean(supabase),
 
@@ -35,7 +34,8 @@ export function createAuth(supabase) {
     async sendCode(rawEmail) {
       const email = String(rawEmail ?? "").trim().toLowerCase();
       if (!/^[^@\s]+@[^@\s]+$/.test(email)) throw new Error("Please enter a valid email address.");
-      const { error } = await supabase.auth.signInWithOtp({ email, shouldCreateUser: true } });
+      // No emailRedirectTo: the link in the email goes to the Site URL set in Supabase Auth settings
+      const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
       if (error) throw new Error(friendlyAuthError(error));
       return email;
     },

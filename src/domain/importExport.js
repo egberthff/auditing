@@ -3,6 +3,7 @@
 import { equalShares, migrateState, seedOf } from "../ledger.js";
 import { isValidCurrency } from "../money.js";
 import { buildLedger } from "./ledgerState.js";
+import { periodsFor } from "./reconcile.js";
 import { UserError } from "./tripActions.js";
 
 export const EXPORT_FORMAT = "travel-audit-trip";
@@ -30,8 +31,12 @@ async function writeTrip(repo, { name, currency, ownerId, members, expenses, tra
   const start = Date.now();
   await repo.saveBatch([
     { table: "trips", record: trip },
-    // Members are listed by creation time, so keep the file's order
-    ...members.map((m, i) => ({ table: "members", record: withTrip({ ...m, createdAt: m.createdAt ?? new Date(start + i).toISOString() }) })),
+    // Members are listed by creation time, so keep the file's order. Without a membership history,
+    // a member counts as joined from the first expense they share, so imported splits aren't flagged.
+    ...members.map((m, i) => {
+      const record = { ...m, createdAt: m.createdAt ?? new Date(start + i).toISOString() };
+      return { table: "members", record: withTrip({ ...record, periods: periodsFor(record, expenses) }) };
+    }),
     ...expenses.map(e => ({ table: "expenses", record: withTrip(e) })),
     ...transfers.map(t => ({ table: "transfers", record: withTrip(t) })),
   ]);
@@ -50,6 +55,9 @@ function importTripExport(repo, file, ownerId) {
     return {
       id, name: String(m.name ?? "").trim().slice(0, 50) || "Unnamed",
       billFrom: m.billFrom === "start" ? "start" : "join", leftAt: validDate(m.leftAt), createdAt: validDate(m.createdAt) ?? undefined,
+      periods: Array.isArray(m.periods)
+        ? m.periods.filter(isRecord).map(p => ({ joinedAt: validDate(p.joinedAt), leftAt: validDate(p.leftAt) }))
+        : undefined,
     };
   });
   const mapId = (id, what) => {
@@ -65,7 +73,7 @@ function importTripExport(repo, file, ownerId) {
       id: crypto.randomUUID(), description: String(e.description ?? "").slice(0, 200), amountCents: Number(e.amountCents),
       paidMode: ["equal", "single", "custom"].includes(e.paidMode) ? e.paidMode : "custom",
       payerId: e.payerId ? mapId(e.payerId, label) : null,
-      participants, shares: (Array.isArray(e.shares) ? e.shares : []).map(Number), contributions,
+      participants, shares: (Array.isArray(e.shares) ? e.shares : []).map(Number), contributions, splitConfirmed: e.splitConfirmed === true,
       occurredAt: validDate(e.occurredAt) ?? new Date().toISOString(),
     };
   });

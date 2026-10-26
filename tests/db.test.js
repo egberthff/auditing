@@ -3,8 +3,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
+import { digestRows } from "../src/sync/digest.js";
 
-const MIGRATION = readFileSync(new URL("../supabase/migrations/0001_init.sql", import.meta.url), "utf8");
+const migration = name => readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), "utf8");
 
 const SUPABASE_STUB = `
   create schema auth;
@@ -26,6 +27,7 @@ const TRIP = "aaaaaaaa-0000-4000-8000-000000000001";
 const ALICE = "bbbbbbbb-0000-4000-8000-000000000001";
 const BOB = "bbbbbbbb-0000-4000-8000-000000000002";
 const OUTSIDER = "bbbbbbbb-0000-4000-8000-000000000099";
+const OLD_EXPENSE = "cccccccc-0000-4000-8000-000000000001";
 
 let db;
 
@@ -58,13 +60,17 @@ async function insertExpense(tx, e) {
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  await db.exec(MIGRATION);
+  await db.exec(migration("0001_init.sql"));
+  // Data that exists before 0002 runs (as on a live project), so the backfill is tested too
   await db.exec(`
     insert into auth.users values ('${OWNER}', 'owner@example.com'), ('${VIEWER}', 'viewer@example.com'), ('${STRANGER}', 'stranger@example.com');
     insert into public.trips (id, owner_id, name, currency) values ('${TRIP}', '${OWNER}', 'Bali', 'USD');
     insert into public.members (id, trip_id, name) values ('${ALICE}', '${TRIP}', 'Alice'), ('${BOB}', '${TRIP}', 'Bob');
     insert into public.trip_viewers (id, trip_id, email) values (gen_random_uuid(), '${TRIP}', 'viewer@example.com');
+    insert into public.expenses (id, trip_id, description, amount_cents, paid_mode, participants, shares, contributions, occurred_at)
+      values ('${OLD_EXPENSE}', '${TRIP}', 'Old', 1000, 'single', array['${ALICE}']::uuid[], array[1000], '{"${ALICE}": 1000}', '2020-01-01T00:00:00Z');
   `);
+  await db.exec(migration("0002_multi_device.sql"));
 }, 60000);
 
 // Shut the WASM database down before the test worker exits (otherwise the worker can crash on exit)
@@ -178,5 +184,69 @@ describe("row level security", () => {
         [VIEWER, JSON.stringify({ sub: VIEWER, email: "viewer@example.com" })]);
       expect(await count(tx, "trips")).toBe(0);
     });
+  });
+});
+
+describe("multi-device sync support (0002)", () => {
+  test("existing members get a membership period starting at the first expense they share", async () => {
+    const { rows } = await db.query(`select id, periods from public.members order by name`);
+    const alice = rows.find(r => r.id === ALICE);
+    const bob = rows.find(r => r.id === BOB);
+    expect(alice.periods).toHaveLength(1);
+    expect(Date.parse(alice.periods[0].joinedAt)).toBe(Date.parse("2020-01-01T00:00:00Z"));
+    expect(alice.periods[0].leftAt).toBeNull();
+    expect(Date.parse(bob.periods[0].joinedAt)).toBeGreaterThan(Date.parse("2020-01-02T00:00:00Z")); // shares nothing old
+  });
+
+  test("periods must be a list", async () => {
+    const err = await as(OWNER, "owner@example.com", tx => errorOf(tx.query(`update public.members set periods = '{}' where id = '${ALICE}'`)));
+    expect(err?.message).toMatch(/periods_is_array/);
+  });
+
+  test("a deleted expense stays deleted when an offline device edits it later, and comes back with a newer timestamp", async () => {
+    await as(OWNER, "owner@example.com", async tx => {
+      const e = expense();
+      await insertExpense(tx, e);
+      await tx.query("update public.expenses set deleted_at = now() where id = $1", [e.id]);
+      const before = (await tx.query("select updated_at from public.expenses where id = $1", [e.id])).rows[0].updated_at;
+      await tx.query("select pg_sleep(0.01)");
+      // the offline device re-splits the expense and sends it without the deletion
+      await tx.query("update public.expenses set deleted_at = null, description = 'Edited elsewhere' where id = $1", [e.id]);
+      const { rows } = await tx.query("select deleted_at, description, updated_at, clock_timestamp() as t from public.expenses where id = $1", [e.id]);
+      expect(rows[0].deleted_at).not.toBeNull();
+      expect(rows[0].description).toBe("dinner");
+      // updated_at is the transaction time in Postgres; the row is re-stamped so devices pull the deletion
+      expect(rows[0].updated_at.getTime()).toBeGreaterThanOrEqual(before.getTime());
+    });
+  });
+
+  test("trips and viewers can still be restored after deletion", async () => {
+    await as(OWNER, "owner@example.com", async tx => {
+      await tx.query(`update public.trips set deleted_at = now() where id = '${TRIP}'`);
+      await tx.query(`update public.trips set deleted_at = null where id = '${TRIP}'`);
+      const { rows } = await tx.query(`select deleted_at from public.trips where id = '${TRIP}'`);
+      expect(rows[0].deleted_at).toBeNull();
+    });
+  });
+
+  test("trip_digest matches the fingerprint the app computes from the same rows", async () => {
+    await as(OWNER, "owner@example.com", async tx => {
+      const digests = (await tx.query("select * from public.trip_digest($1::uuid[])", [[TRIP]])).rows;
+      const byTable = Object.fromEntries(digests.map(d => [d.table_name, d]));
+      for (const table of ["trips", "trip_viewers", "members", "expenses"]) {
+        const tripCol = table === "trips" ? "id" : "trip_id";
+        const { rows } = await tx.query(`select id::text as id, updated_at::text as "updatedAt" from public.${table} where ${tripCol} = $1`, [TRIP]);
+        expect(Number(byTable[table].row_count)).toBe(rows.length);
+        expect(byTable[table].digest).toBe(await digestRows(rows));
+      }
+      expect(byTable.transfers).toBeUndefined(); // tables without rows are left out
+    });
+  });
+
+  test("a viewer's digest only covers what the viewer can read", async () => {
+    const rows = await as(VIEWER, "viewer@example.com", tx => tx.query("select * from public.trip_digest($1::uuid[])", [[TRIP]]).then(r => r.rows));
+    expect(rows.map(r => r.table_name).sort()).toEqual(["expenses", "members", "trips"]);
+    const strangers = await as(STRANGER, "stranger@example.com", tx => tx.query("select * from public.trip_digest($1::uuid[])", [[TRIP]]).then(r => r.rows));
+    expect(strangers).toEqual([]);
   });
 });
